@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -22,13 +22,13 @@ import org.specs2.scalaz.ValidationMatchers
 import org.json4s.JObject
 import org.json4s.JsonDSL._
 
-class OutputSpec extends Specification with ValidationMatchers  { def is =
-  "This is a specification to test the HTTP API of API Request Enrichment" ^
-                                                                          p^
-    "Not found value result in Failure"                                ! e1^
-    "Successfully generate context"                                    ! e2^
-    "Successfully generate context out of complex object"              ! e3^
-                                                                       end
+class OutputSpec extends Specification with ValidationMatchers {
+  def is = s2"""
+  This is a specification to test the HTTP API of API Request Enrichment
+  Not found value result in Failure                   $e1
+  Successfully generate context                       $e2
+  Successfully generate context out of complex object $e3
+  """
 
   def e1 = {
     val output = Output("iglu:com.snowplowanalytics/some_schema/jsonschema/1-0-0", Some(JsonOutput("$.value")))
@@ -38,14 +38,15 @@ class OutputSpec extends Specification with ValidationMatchers  { def is =
   def e2 = {
     val output = Output("iglu:com.snowplowanalytics/some_schema/jsonschema/1-0-0", Some(JsonOutput("$.value")))
     output.parse("""{"value": 32}""").flatMap(output.extract).map(output.describeJson) must beSuccessful.like {
-      case context => context must be equalTo(("schema", "iglu:com.snowplowanalytics/some_schema/jsonschema/1-0-0") ~ ("data" -> 32))
+      case context =>
+        context must be equalTo (("schema", "iglu:com.snowplowanalytics/some_schema/jsonschema/1-0-0") ~ ("data" -> 32))
     }
   }
 
   def e3 = {
-    val output = Output("iglu:com.snowplowanalytics/complex_schema/jsonschema/1-0-0", Some(JsonOutput("$.objects[1].deepNesting[3]")))
-    output.parse(
-      """
+    val output = Output("iglu:com.snowplowanalytics/complex_schema/jsonschema/1-0-0",
+                        Some(JsonOutput("$.objects[1].deepNesting[3]")))
+    output.parse("""
         |{
         |  "value": 32,
         |  "objects":
@@ -56,7 +57,8 @@ class OutputSpec extends Specification with ValidationMatchers  { def is =
         |  ]
         |}
       """.stripMargin).flatMap(output.extract).map(output.describeJson) must beSuccessful.like {
-      case context => context must be equalTo(("schema", "iglu:com.snowplowanalytics/complex_schema/jsonschema/1-0-0") ~ ("data" -> 42))
+      case context =>
+        context must be equalTo (("schema", "iglu:com.snowplowanalytics/complex_schema/jsonschema/1-0-0") ~ ("data" -> 42))
 
     }
 

@@ -25,7 +25,7 @@ module Snowplow
     class ConfigError < Error
     end
 
-    # Problem when running Amazon EMR (e.g. job failed) 
+    # Problem when running Amazon EMR (e.g. job failed)
     class EmrExecutionError < Error
     end
 
@@ -42,8 +42,23 @@ module Snowplow
     class NoDataToProcessError < Error
     end
 
-    # Raised if the .lzo and .lzo.index files aren't matched
-    class UnmatchedLzoFilesError < Error
+    # Raised if EMR/S3 has unexpected state
+    # Requires manual intervention
+    class UnexpectedStateError < Error
+    end
+
+    # Raised if the linter encountered an issue
+    class LinterError < Error
+      def initialize(message)
+        super(message)
+      end
+    end
+
+    # Raised if the lock is held
+    class LockHeldError < Error
+      def initialize(message)
+        super(message)
+      end
     end
   end
 end

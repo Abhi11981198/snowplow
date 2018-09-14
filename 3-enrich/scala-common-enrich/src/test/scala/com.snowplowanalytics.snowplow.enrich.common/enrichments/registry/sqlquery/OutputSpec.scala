@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -22,14 +22,16 @@ import java.sql.Date
 import org.specs2.Specification
 import org.specs2.scalaz.ValidationMatchers
 
-class OutputSpec extends Specification with ValidationMatchers { def is =
-  "This is a specification to test the Output of SQL Query Enrichment" ^
-                                                                      p^
-    "Parse Inetger without type hint"                       ! e1^
-    "Parse Double without type hint"                        ! e2^
-    "Handle null"                                           ! e3^
-    "Handle java.sql.Date as ISO8601 string"                ! e4^
-    end
+import org.joda.time.DateTime
+
+class OutputSpec extends Specification with ValidationMatchers {
+  def is = s2"""
+  This is a specification to test the Output of SQL Query Enrichment
+  Parse Integer without type hint        $e1
+  Parse Double without type hint         $e2
+  Handle null                            $e3
+  Handle java.sql.Date as ISO8601 string $e4
+  """
 
   def e1 =
     JsonOutput.getValue(1: Integer, "") must beEqualTo(JInt(1))
@@ -42,6 +44,6 @@ class OutputSpec extends Specification with ValidationMatchers { def is =
 
   def e4 = {
     val date = new Date(1465558727000L)
-    JsonOutput.getValue(date, "java.sql.Date") must beEqualTo(JString("2016-06-10T11:38:47.000Z"))
+    JsonOutput.getValue(date, "java.sql.Date") must beEqualTo(JString(new DateTime(date).toString))
   }
 }

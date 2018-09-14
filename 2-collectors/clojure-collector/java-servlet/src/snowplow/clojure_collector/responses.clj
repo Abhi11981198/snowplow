@@ -1,4 +1,4 @@
-;;;; Copyright (c) 2012-2013 Snowplow Analytics Ltd. All rights reserved.
+;;;; Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
 ;;;;
 ;;;; This program is licensed to you under the Apache License Version 2.0,
 ;;;; and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -10,7 +10,7 @@
 ;;;; See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
 
 ;;;; Author:    Alex Dean (mailto:support@snowplowanalytics.com)
-;;;; Copyright: Copyright (c) 2012-2013 Snowplow Analytics Ltd
+;;;; Copyright: Copyright (c) 2012-2018 Snowplow Analytics Ltd
 ;;;; License:   Apache License Version 2.0
 
 (ns snowplow.clojure-collector.responses
@@ -38,13 +38,17 @@
 
 (defn- set-cookie
   "Sets a Snowplow cookie with visitor `id`,
-   to last `duration` seconds for `domain`.
+   to last `duration` seconds for `domain` at `path`.
    If domain is nil, leave out so the FQDN
-   of the host can be used instead"
-  [id duration domain]
+   of the host can be used instead.
+   If path is nil, path will be /."
+  [id duration domain path]
   (merge
     {:value    id
-     :expires (now-plus duration)}
+     :expires (now-plus duration)
+     :path (if (nil? path)
+       "/"
+       path)}
    (when-let [d domain]
     {:domain   d})))
 
@@ -68,7 +72,7 @@
                     "Content-Type"   "image/gif"
                     "Content-Length"  pixel-length)
      :cookies cookies
-     :body    (ByteArrayInputStream. pixel)})   
+     :body    (ByteArrayInputStream. pixel)})
 
 (defn- send-cookie-200
   "Respond with a 200,
@@ -76,7 +80,7 @@
   [cookies headers]
     {:status  200
      :headers headers
-     :cookies cookies})   
+     :cookies cookies})
 
 (defn- send-redirect
   "If our params map contains `u`, 302 redirect to that URI,
@@ -95,17 +99,26 @@
 (defn send-cookie-pixel-or-200-or-redirect
   "Respond with the cookie and either a
    transparent pixel, a 200 or a redirect"
-  [cookies duration domain p3p-header pixel vendor params]
+  [cookies duration domain path p3p-header pixel vendor params]
   (let [id      (generate-id cookies)
         cookies (if (= duration 0)
                   {}
-                  {cookie-name (set-cookie id duration domain)})
+                  {cookie-name (set-cookie id duration domain path)})
         headers {"P3P" p3p-header}]
     (if (= vendor "r")
       (send-redirect cookies headers params)
       (if pixel
         (send-cookie-pixel cookies headers)
         (send-cookie-200 cookies headers)))))
+
+(defn send-preflight-response
+  "Respond to CORS request with an appropriate Access-Control-Allow-Origin header"
+  [headers]
+  (let [origin-header (get headers "origin" "*")]
+    {:status 200
+     :headers {"Access-Control-Allow-Origin" origin-header
+      "Access-Control-Allow-Crendentials" "true"
+      "Access-Control-Allow-Headers" "Content-Type"}}))
 
 (def send-404
   "Respond with a 404"
@@ -121,9 +134,11 @@
    :body    "OK"})
 
 
-(def send-flash-crossdomain
-  "Send the most permissive Flash security settings as per
+(defn send-flash-crossdomain
+  "Send the configured Flash security settings as per
    http://www.adobe.com/devnet/articles/crossdomain_policy_file_spec.html"
+  [cross-domain-policy-domain cross-domain-policy-secure]
   {:status  200
    :headers {"Content-Type" "text/xml"}
-   :body    "<?xml version=\"1.0\"?>\n<cross-domain-policy>\n  <allow-access-from domain=\"*\" secure=\"false\" />\n</cross-domain-policy>"})
+   :body    (str "<?xml version=\"1.0\"?>\n<cross-domain-policy>\n  <allow-access-from domain=\""
+    cross-domain-policy-domain "\" secure=\"" cross-domain-policy-secure "\" />\n</cross-domain-policy>")})
