@@ -1,4 +1,4 @@
-;;;; Copyright (c) 2012-2018 Snowplow Analytics Ltd. All rights reserved.
+;;;; Copyright (c) 2012-2019 Snowplow Analytics Ltd. All rights reserved.
 ;;;;
 ;;;; This program is licensed to you under the Apache License Version 2.0,
 ;;;; and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -10,7 +10,7 @@
 ;;;; See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
 
 ;;;; Author:    Alex Dean (mailto:support@snowplowanalytics.com)
-;;;; Copyright: Copyright (c) 2012-2018 Snowplow Analytics Ltd
+;;;; Copyright: Copyright (c) 2012-2019 Snowplow Analytics Ltd
 ;;;; License:   Apache License Version 2.0
 
 (ns snowplow.clojure-collector.responses
@@ -63,6 +63,13 @@
   [url id]
     (str url "&" id-name "=" id))
 
+(defn access-control-headers
+  "Return an Access-Control-Allow-Origin header which allows the domain which made the request"
+  [headers]
+  (let [origin-header (get headers "origin" "*")]
+    {"Access-Control-Allow-Origin" origin-header
+      "Access-Control-Allow-Credentials" "true"}))
+
 (defn- send-cookie-pixel
   "Respond with a transparent pixel,
    attaching `cookies` and `headers`"
@@ -99,26 +106,24 @@
 (defn send-cookie-pixel-or-200-or-redirect
   "Respond with the cookie and either a
    transparent pixel, a 200 or a redirect"
-  [cookies duration domain path p3p-header pixel vendor params]
+  [cookies headers duration domain path p3p-header pixel vendor params]
   (let [id      (generate-id cookies)
         cookies (if (= duration 0)
                   {}
                   {cookie-name (set-cookie id duration domain path)})
-        headers {"P3P" p3p-header}]
+        hs (merge {"P3P" p3p-header} (access-control-headers headers))]
     (if (= vendor "r")
-      (send-redirect cookies headers params)
+      (send-redirect cookies hs params)
       (if pixel
-        (send-cookie-pixel cookies headers)
-        (send-cookie-200 cookies headers)))))
+        (send-cookie-pixel cookies hs)
+        (send-cookie-200 cookies hs)))))
 
 (defn send-preflight-response
   "Respond to CORS request with an appropriate Access-Control-Allow-Origin header"
   [headers]
-  (let [origin-header (get headers "origin" "*")]
+  (let [heads (merge (access-control-headers headers) {"Access-Control-Allow-Headers" "Content-Type"})]
     {:status 200
-     :headers {"Access-Control-Allow-Origin" origin-header
-      "Access-Control-Allow-Crendentials" "true"
-      "Access-Control-Allow-Headers" "Content-Type"}}))
+     :headers heads}))
 
 (def send-404
   "Respond with a 404"
