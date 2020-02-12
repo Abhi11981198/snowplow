@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2019 Snowplow Analytics Ltd. All rights reserved.
+# Copyright (c) 2013-2020 Snowplow Analytics Ltd. All rights reserved.
 #
 # This program is licensed to you under the Apache License Version 2.0, and
 # you may not use this file except in compliance with the Apache License
@@ -23,6 +23,17 @@ collector {
   interface = ${?COLLECTOR_INTERFACE}
   port = {{collectorPort}}
   port = ${?COLLECTOR_PORT}
+
+  # optional SSL/TLS configuration
+  ssl {
+    enable = false
+    enable = ${?COLLECTOR_SSL}
+    # whether to redirect HTTP to HTTPS
+    redirect = false
+    redirect = ${?COLLECTOR_SSL_REDIRECT}
+    port = 9543
+    port = ${?COLLECTOR_SSL_PORT}
+  }
 
   # The collector responds with a cookie to requests with a path that matches the 'vendor/version' protocol.
   # The expected values are:
@@ -141,6 +152,12 @@ collector {
     forwardedProtocolHeader = ${?COLLECTOR_COOKIE_BOUNCE_FORWARDED_PROTOCOL_HEADER}
   }
 
+  # When enabled, redirect prefix `r/` will be enabled and its query parameters resolved.
+  # Otherwise the request prefixed with `r/` will be dropped with `404 Not Found`
+  # Custom redirects configured in `paths` can still be used.
+  enableDefaultRedirect = true
+  enableDefaultRedirect = ${?COLLECTOR_ALLOW_REDIRECTS}
+
   # When enabled, the redirect url passed via the `u` query parameter is scanned for a placeholder
   # token. All instances of that token are replaced withe the network ID. If the placeholder isn't
   # specified, the default value is `${SP_NUID}`.
@@ -183,17 +200,6 @@ collector {
     # If metrics are enabled then all requests will be logged as prometheus metrics
     # and '/metrics' endpoint will return the report about the requests
     enabled = false
-    enabled = ${?COLLECTOR_PROMETHEUS_METRICS_ENABLED}
-    # Custom buckets for http_request_duration_seconds_bucket duration metric
-    #durationBucketsInSeconds = [0.1, 3, 10]
-    #durationbucketsInSeconds = ${?COLLECTOR_PROMETHEUS_METRICS_DURATION_BUCKETS_IN_SECONDS}
-  }
-
-  # Configuration of prometheus http metrics
-  prometheusMetrics {
-    # If metrics are enabled then all requests will be logged as prometheus metrics
-    # and '/metrics' endpoint will return the report about the requests
-    enabled = false
     # Custom buckets for http_request_duration_seconds_bucket duration metric
     #durationBucketsInSeconds = [0.1, 3, 10]
   }
@@ -214,7 +220,7 @@ collector {
 
     # Enable the chosen sink by uncommenting the appropriate configuration
     sink {
-      # Choose between kinesis, googlepubsub, kafka, nsq, or stdout.
+      # Choose between kinesis, google-pub-sub, kafka, nsq, or stdout.
       # To use stdout, comment or remove everything in the "collector.streams.sink" section except
       # "enabled" which should be set to "stdout".
       enabled = kinesis
@@ -334,4 +340,22 @@ akka {
       uri-parsing-mode = ${?AKKA_HTTP_SERVER_PARSING_URI_PARSING_MODE}
     }
   }
+
+  # By default setting `collector.ssl` relies on JSSE (Java Secure Socket
+  # Extension) to enable secure communication.
+  # To override the default settings set the following section as per
+  # https://lightbend.github.io/ssl-config/ExampleSSLConfig.html
+  # ssl-config {
+  #   debug = {
+  #     ssl = true
+  #   }
+  #   keyManager = {
+  #     stores = [
+  #       {type = "PKCS12", classpath = false, path = "/etc/ssl/mycert.p12", password = "mypassword" }
+  #     ]
+  #   }
+  #   loose {
+  #     disableHostnameVerification = false
+  #   }
+  # }
 }
